@@ -541,17 +541,17 @@ def coordinate_picker():
         st.toast("위치가 지정되었습니다.", icon="✓")
 
 
-def sidebar_forms():
-    st.sidebar.radio(
+def collection_panel():
+    st.radio(
         "화면 모드",
         options=list(THEME_LABELS),
         format_func=lambda value: THEME_LABELS[value],
         key="theme",
         horizontal=True,
     )
-    st.sidebar.markdown('<div class="section-label"><span class="section-label-num">LAYER 01</span><span class="section-label-text">시민지식 수집</span></div>', unsafe_allow_html=True)
-    st.sidebar.markdown('<p class="section-desc">재해 경험·위험인식·지역 전통지식을 직접 제보하세요. 모든 자료는 시민과학 데이터로 통합됩니다.</p>', unsafe_allow_html=True)
-    with st.sidebar:
+    with st.expander("시민지식 수집", expanded=False):
+        st.markdown('<div class="section-label"><span class="section-label-num">LAYER 01</span><span class="section-label-text">시민지식 수집</span></div>', unsafe_allow_html=True)
+        st.markdown('<p class="section-desc">재해 경험·위험인식·지역 전통지식을 직접 제보하세요. 모든 자료는 시민과학 데이터로 통합됩니다.</p>', unsafe_allow_html=True)
         coordinate_picker()
         tab_report, tab_perception, tab_knowledge = st.tabs(["재해 제보", "위험 인식", "전통 지식"])
 
@@ -642,7 +642,7 @@ def filter_reports(all_reports, hazard_filter, years_back):
     return [r for r in all_reports if r["hazard"] in hazard_filter and parse_time(r["occurred_at"]) >= cutoff]
 
 
-def right_panel(all_reports, filtered_reports, hazard_filter, years_back):
+def right_panel(all_reports):
     st.markdown('<div class="section-label"><span class="section-label-num">CONTROL</span><span class="section-label-text">지도 레이어</span></div>', unsafe_allow_html=True)
     for key, label, small in [
         ("reports", "L1 시민 제보", "Point Map"),
@@ -660,6 +660,16 @@ def right_panel(all_reports, filtered_reports, hazard_filter, years_back):
             st.markdown(f"**{item['title']}**  \n`{item['year']}` · {item['source']}  \n{item['description']}")
 
     st.markdown('<div class="section-label"><span class="section-label-num">FILTER</span><span class="section-label-text">재해 유형</span></div>', unsafe_allow_html=True)
+    hazard_filter = st.multiselect(
+        "재해 유형 필터",
+        options=list(HAZARD_META),
+        default=list(HAZARD_META),
+        format_func=lambda h: HAZARD_META[h]["label"],
+        label_visibility="collapsed",
+    )
+    years_back = st.slider("조회 범위", 0.25, 5.0, 2.0, 0.25, format="최근 %.2g년")
+    filtered_reports = filter_reports(all_reports, hazard_filter, years_back)
+
     for h, meta in HAZARD_META.items():
         cnt = len([r for r in filtered_reports if r["hazard"] == h])
         st.markdown(
@@ -720,12 +730,14 @@ def right_panel(all_reports, filtered_reports, hazard_filter, years_back):
             st.session_state.zoom = 12.5
             st.rerun()
 
+    return hazard_filter, years_back, filtered_reports
+
 
 def drawing_panel():
     st.markdown('<div class="section-label"><span class="section-label-num">LAYER 03</span><span class="section-label-text">참여형 매핑 도구</span></div>', unsafe_allow_html=True)
     mode = st.radio("도구", ["탐색", "핀", "폴리곤", "라인", "프리핸드"], horizontal=True, label_visibility="collapsed")
     if mode == "핀":
-        st.info("좌측 좌표 선택에서 위치를 지정하면 지도에 핀이 표시됩니다.")
+        st.info("좌표 선택에서 위치를 지정하면 지도에 핀이 표시됩니다.")
     elif mode in ["폴리곤", "라인", "프리핸드"]:
         st.caption("좌표는 `경도,위도` 형식으로 줄마다 입력하세요. 프리핸드는 Streamlit 버전에서 라인으로 저장됩니다.")
         sample = "127.0200,37.4900\n127.0500,37.5000\n127.0400,37.5200"
@@ -776,17 +788,17 @@ def detail_panel(all_reports, all_knowledge):
 def main():
     init_state()
     inject_css(st.session_state.theme)
-    sidebar_forms()
 
     all_reports = REPORTS + st.session_state.user_reports
     all_knowledge = KNOWLEDGE + st.session_state.user_knowledge
     header(len(all_reports))
 
-    left, center, right = st.columns([0.78, 2.25, 0.92], gap="medium")
+    left, center, right = st.columns([0.72, 3.1, 0.88], gap="medium")
 
     with left:
-        drawing_panel()
-        detail_panel(all_reports, all_knowledge)
+        hazard_filter, years_back, filtered_reports = right_panel(all_reports)
+        filtered_knowledge = [k for k in all_knowledge]
+        filtered_hotspots = [h for h in HOTSPOTS if h["hazard"] in hazard_filter]
 
     with center:
         st.markdown(
@@ -799,18 +811,7 @@ def main():
             """,
             unsafe_allow_html=True,
         )
-        hazard_filter = st.multiselect(
-            "재해 유형 필터",
-            options=list(HAZARD_META),
-            default=list(HAZARD_META),
-            format_func=lambda h: HAZARD_META[h]["label"],
-            label_visibility="collapsed",
-        )
-        years_back = st.slider("조회 범위", 0.25, 5.0, 2.0, 0.25, format="최근 %.2g년")
-        filtered_reports = filter_reports(all_reports, hazard_filter, years_back)
-        filtered_knowledge = [k for k in all_knowledge]
-        filtered_hotspots = [h for h in HOTSPOTS if h["hazard"] in hazard_filter]
-        st.pydeck_chart(make_deck(filtered_reports, filtered_knowledge, filtered_hotspots), use_container_width=True, height=690)
+        st.pydeck_chart(make_deck(filtered_reports, filtered_knowledge, filtered_hotspots), use_container_width=True, height=780)
         st.markdown(
             f'<div class="map-note">선택 핀: <b>{st.session_state.picked_lat:.4f}</b>°N, <b>{st.session_state.picked_lng:.4f}</b>°E · zoom <b>{st.session_state.zoom:.1f}</b></div>',
             unsafe_allow_html=True,
@@ -822,7 +823,10 @@ def main():
             col.markdown(f'<div class="legend-row"><span><span class="swatch" style="background:{meta["color"]}"></span>{meta["label"]}</span></div>', unsafe_allow_html=True)
 
     with right:
-        right_panel(all_reports, filtered_reports, hazard_filter, years_back)
+        collection_panel()
+        detail_panel(all_reports, all_knowledge)
+        with st.expander("참여형 매핑 도구", expanded=False):
+            drawing_panel()
 
 
 if __name__ == "__main__":
