@@ -153,10 +153,13 @@ def inject_css(theme):
         """
     css_rules = """
         html, body, [data-testid="stAppViewContainer"] { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; }
-        [data-testid="stHeader"] { background: var(--header-bg); }
+        [data-testid="stHeader"] { background: transparent; height: 0; }
+        [data-testid="stToolbar"], [data-testid="stDecoration"], [data-testid="stStatusWidget"] {
+          visibility:hidden; height:0; position:fixed;
+        }
         [data-testid="stSidebar"] { background: var(--sidebar-bg); border-right: 1px solid var(--border); }
         [data-testid="stSidebar"] * { color: var(--text); }
-        .block-container { padding: 1rem 1.2rem 2rem; max-width: 100%; }
+        .block-container { padding: .45rem 1.2rem 2rem; max-width: 100%; }
         .brandbar {
           display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
           border:1px solid var(--border); border-left:0; border-right:0; padding:16px 18px 17px; margin-bottom:14px;
