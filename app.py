@@ -86,19 +86,73 @@ PRESET_POINTS = {
 }
 
 
-def inject_css():
-    st.markdown(
-        """
+THEME_LABELS = {
+    "light": "Light",
+    "dark": "Dark",
+}
+
+
+def theme_tokens(theme):
+    if theme == "dark":
+        return {
+            "bg": "#0a0d11",
+            "app_bg": "#0a0d11",
+            "header_bg": "rgba(10,13,17,.8)",
+            "sidebar_bg": "#0e141b",
+            "surface": "#111820",
+            "surface_2": "#151d26",
+            "surface_strong": "#101720",
+            "surface_alpha": "rgba(17,24,32,.75)",
+            "panel_gradient": "linear-gradient(180deg, rgba(21,29,38,.98), rgba(14,20,27,.98))",
+            "border": "#29323d",
+            "paper": "#f4ecd8",
+            "text": "#d8d1c2",
+            "text_dim": "#978f80",
+            "text_faint": "#6f6a60",
+            "vermillion": "#c8472a",
+            "vermillion_soft": "#e87456",
+            "ochre": "#c89b3f",
+            "ochre_soft": "#e0b85c",
+        }
+    return {
+        "bg": "#f7f3ea",
+        "app_bg": "#f7f3ea",
+        "header_bg": "rgba(247,243,234,.88)",
+        "sidebar_bg": "#efe7d7",
+        "surface": "#fffaf0",
+        "surface_2": "#f2eadb",
+        "surface_strong": "#fff8eb",
+        "surface_alpha": "rgba(255,250,240,.86)",
+        "panel_gradient": "linear-gradient(180deg, rgba(255,250,240,.98), rgba(239,231,215,.98))",
+        "border": "#d4c7ad",
+        "paper": "#211c16",
+        "text": "#2d2922",
+        "text_dim": "#6f6657",
+        "text_faint": "#8b806e",
+        "vermillion": "#b43b23",
+        "vermillion_soft": "#d45a3b",
+        "ochre": "#a7781f",
+        "ochre_soft": "#bd8b2d",
+    }
+
+
+def inject_css(theme):
+    tokens = theme_tokens(theme)
+    css_vars = f"""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
-        :root {
-          --bg:#0a0d11; --surface:#111820; --surface-2:#151d26; --border:#29323d;
-          --paper:#f4ecd8; --text:#d8d1c2; --text-dim:#978f80; --text-faint:#6f6a60;
-          --vermillion:#c8472a; --vermillion-soft:#e87456; --ochre:#c89b3f; --ochre-soft:#e0b85c;
-        }
+        :root {{
+          --bg:{tokens["bg"]}; --surface:{tokens["surface"]}; --surface-2:{tokens["surface_2"]}; --border:{tokens["border"]};
+          --paper:{tokens["paper"]}; --text:{tokens["text"]}; --text-dim:{tokens["text_dim"]}; --text-faint:{tokens["text_faint"]};
+          --vermillion:{tokens["vermillion"]}; --vermillion-soft:{tokens["vermillion_soft"]}; --ochre:{tokens["ochre"]}; --ochre-soft:{tokens["ochre_soft"]};
+          --surface-alpha:{tokens["surface_alpha"]}; --surface-strong:{tokens["surface_strong"]}; --panel-gradient:{tokens["panel_gradient"]};
+          --header-bg:{tokens["header_bg"]}; --sidebar-bg:{tokens["sidebar_bg"]};
+        }}
+        """
+    css_rules = """
         html, body, [data-testid="stAppViewContainer"] { background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; }
-        [data-testid="stHeader"] { background: rgba(10,13,17,.8); }
-        [data-testid="stSidebar"] { background: #0e141b; border-right: 1px solid var(--border); }
+        [data-testid="stHeader"] { background: var(--header-bg); }
+        [data-testid="stSidebar"] { background: var(--sidebar-bg); border-right: 1px solid var(--border); }
         [data-testid="stSidebar"] * { color: var(--text); }
         .block-container { padding: 1rem 1.2rem 2rem; max-width: 100%; }
         .brandbar {
@@ -110,7 +164,7 @@ def inject_css():
         .subtitle { color:var(--text-dim); font-size:13px; font-weight:500; margin-left:10px; }
         .header-stats { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
         .header-stat {
-          min-width:92px; padding:7px 10px; border:1px solid var(--border); background:rgba(17,24,32,.75);
+          min-width:92px; padding:7px 10px; border:1px solid var(--border); background:var(--surface-alpha);
         }
         .header-stat span { display:block; color:var(--text-faint); font-size:10px; letter-spacing:.08em; }
         .header-stat strong { color:var(--paper); font-size:16px; line-height:1.2; }
@@ -119,14 +173,14 @@ def inject_css():
         .section-label-text { color:var(--paper); font-size:15px; font-weight:800; }
         .section-desc { color:var(--text-dim); font-size:12px; line-height:1.65; margin-bottom:12px; }
         .cartouche {
-          padding:14px 16px; background:rgba(15,20,25,.92); border:1px solid var(--border);
+          padding:14px 16px; background:var(--surface-alpha); border:1px solid var(--border);
           border-left:3px solid var(--vermillion-soft); margin-bottom:10px;
         }
         .cartouche-eyebrow { color:var(--vermillion-soft); font-size:10px; letter-spacing:.14em; font-weight:800; }
         .cartouche-title { color:var(--paper); font-size:24px; font-weight:900; margin-top:4px; }
         .cartouche-meta { color:var(--text-dim); font-size:11px; margin-top:4px; }
         .metric-card, .panel-card {
-          border:1px solid var(--border); background:linear-gradient(180deg, rgba(21,29,38,.98), rgba(14,20,27,.98));
+          border:1px solid var(--border); background:var(--panel-gradient);
           padding:13px; border-radius:3px;
         }
         .metric-label { color:var(--text-faint); font-size:10px; letter-spacing:.08em; }
@@ -134,13 +188,13 @@ def inject_css():
         .metric-trend { color:var(--ochre-soft); font-size:11px; }
         .legend-row {
           display:flex; align-items:center; justify-content:space-between; gap:8px;
-          border:1px solid var(--border); padding:8px 9px; margin-bottom:6px; background:rgba(17,24,32,.75);
+          border:1px solid var(--border); padding:8px 9px; margin-bottom:6px; background:var(--surface-alpha);
           font-size:12px;
         }
         .swatch { width:12px; height:12px; display:inline-block; border-radius:2px; margin-right:6px; box-shadow:0 0 10px rgba(255,255,255,.08); }
         .count { color:var(--text-faint); font-family:monospace; }
         .report-card {
-          border:1px solid var(--border); background:#101720; padding:11px; border-left:3px solid var(--vermillion-soft);
+          border:1px solid var(--border); background:var(--surface-strong); padding:11px; border-left:3px solid var(--vermillion-soft);
           margin-bottom:8px; border-radius:3px;
         }
         .report-head { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:7px; }
@@ -152,7 +206,7 @@ def inject_css():
         .report-text { color:var(--text); font-size:12px; line-height:1.55; }
         .report-foot { display:flex; justify-content:space-between; color:var(--text-faint); font-size:10px; margin-top:8px; }
         .stButton > button, .stDownloadButton > button {
-          background:#151d26; color:var(--paper); border:1px solid var(--border); border-radius:3px; font-weight:800;
+          background:var(--surface-2); color:var(--paper); border:1px solid var(--border); border-radius:3px; font-weight:800;
         }
         .stButton > button:hover { border-color:var(--vermillion-soft); color:var(--vermillion-soft); }
         div[data-baseweb="tab-list"] button { color:var(--text-dim); }
@@ -160,7 +214,9 @@ def inject_css():
         .stSlider [data-baseweb="slider"] div { color: var(--vermillion-soft); }
         .map-note { color:var(--text-faint); font-size:11px; margin-top:-4px; margin-bottom:8px; }
         </style>
-        """,
+        """
+    st.markdown(
+        css_vars + css_rules,
         unsafe_allow_html=True,
     )
 
@@ -221,6 +277,7 @@ def init_state():
         "focus_lng": 127.7,
         "focus_lat": 36.5,
         "zoom": 6.4,
+        "theme": "light",
         "layers": {
             "reports": True,
             "knowledge": True,
@@ -303,6 +360,15 @@ def drawing_rows():
 
 def make_deck(filtered_reports, filtered_knowledge, filtered_hotspots):
     layers = []
+    is_dark = st.session_state.theme == "dark"
+    map_style = (
+        "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+        if is_dark
+        else "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+    )
+    tooltip_bg = "#101720" if is_dark else "#fff8eb"
+    tooltip_fg = "#f4ecd8" if is_dark else "#211c16"
+
     if st.session_state.layers["heatmap"] and filtered_reports:
         layers.append(
             pdk.Layer(
@@ -424,7 +490,7 @@ def make_deck(filtered_reports, filtered_knowledge, filtered_hotspots):
     )
 
     return pdk.Deck(
-        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+        map_style=map_style,
         initial_view_state=pdk.ViewState(
             latitude=st.session_state.focus_lat,
             longitude=st.session_state.focus_lng,
@@ -432,7 +498,7 @@ def make_deck(filtered_reports, filtered_knowledge, filtered_hotspots):
             pitch=0,
         ),
         layers=layers,
-        tooltip={"html": "<b>{tooltip}</b>", "style": {"backgroundColor": "#101720", "color": "#f4ecd8"}},
+        tooltip={"html": "<b>{tooltip}</b>", "style": {"backgroundColor": tooltip_bg, "color": tooltip_fg}},
     )
 
 
@@ -476,6 +542,13 @@ def coordinate_picker():
 
 
 def sidebar_forms():
+    st.sidebar.radio(
+        "화면 모드",
+        options=list(THEME_LABELS),
+        format_func=lambda value: THEME_LABELS[value],
+        key="theme",
+        horizontal=True,
+    )
     st.sidebar.markdown('<div class="section-label"><span class="section-label-num">LAYER 01</span><span class="section-label-text">시민지식 수집</span></div>', unsafe_allow_html=True)
     st.sidebar.markdown('<p class="section-desc">재해 경험·위험인식·지역 전통지식을 직접 제보하세요. 모든 자료는 시민과학 데이터로 통합됩니다.</p>', unsafe_allow_html=True)
     with st.sidebar:
@@ -701,8 +774,8 @@ def detail_panel(all_reports, all_knowledge):
 
 
 def main():
-    inject_css()
     init_state()
+    inject_css(st.session_state.theme)
     sidebar_forms()
 
     all_reports = REPORTS + st.session_state.user_reports
