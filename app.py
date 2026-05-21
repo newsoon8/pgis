@@ -113,6 +113,7 @@ def theme_tokens(theme):
             "vermillion_soft": "#e87456",
             "ochre": "#c89b3f",
             "ochre_soft": "#e0b85c",
+            "header_accent": "linear-gradient(135deg, rgba(200,71,42,.34), rgba(200,155,63,.18) 46%, rgba(74,107,143,.18))",
         }
     return {
         "bg": "#f7f3ea",
@@ -133,6 +134,7 @@ def theme_tokens(theme):
         "vermillion_soft": "#d45a3b",
         "ochre": "#a7781f",
         "ochre_soft": "#bd8b2d",
+        "header_accent": "linear-gradient(135deg, rgba(212,90,59,.22), rgba(189,139,45,.18) 48%, rgba(74,107,143,.14))",
     }
 
 
@@ -146,7 +148,7 @@ def inject_css(theme):
           --paper:{tokens["paper"]}; --text:{tokens["text"]}; --text-dim:{tokens["text_dim"]}; --text-faint:{tokens["text_faint"]};
           --vermillion:{tokens["vermillion"]}; --vermillion-soft:{tokens["vermillion_soft"]}; --ochre:{tokens["ochre"]}; --ochre-soft:{tokens["ochre_soft"]};
           --surface-alpha:{tokens["surface_alpha"]}; --surface-strong:{tokens["surface_strong"]}; --panel-gradient:{tokens["panel_gradient"]};
-          --header-bg:{tokens["header_bg"]}; --sidebar-bg:{tokens["sidebar_bg"]};
+          --header-bg:{tokens["header_bg"]}; --sidebar-bg:{tokens["sidebar_bg"]}; --header-accent:{tokens["header_accent"]};
         }}
         """
     css_rules = """
@@ -156,12 +158,15 @@ def inject_css(theme):
         [data-testid="stSidebar"] * { color: var(--text); }
         .block-container { padding: 1rem 1.2rem 2rem; max-width: 100%; }
         .brandbar {
-          display:flex; align-items:center; justify-content:space-between; gap:16px;
-          border:1px solid var(--border); border-left:0; border-right:0; padding:12px 2px 14px; margin-bottom:14px;
+          display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+          border:1px solid var(--border); border-left:0; border-right:0; padding:16px 18px 17px; margin-bottom:14px;
+          background:var(--header-accent);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 10px 26px rgba(0,0,0,.08);
         }
-        .brand { color:var(--paper); font-size:24px; font-weight:900; letter-spacing:.04em; }
+        .brand-lockup { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+        .brand { color:var(--paper); font-size:22px; font-weight:900; letter-spacing:.04em; line-height:1; }
         .vermillion { color:var(--vermillion-soft); }
-        .subtitle { color:var(--text-dim); font-size:13px; font-weight:500; margin-left:10px; }
+        .subtitle { color:var(--paper); font-size:34px; font-weight:900; line-height:1; letter-spacing:0; }
         .header-stats { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
         .header-stat {
           min-width:92px; padding:7px 10px; border:1px solid var(--border); background:var(--surface-alpha);
@@ -213,6 +218,12 @@ def inject_css(theme):
         div[data-baseweb="tab-list"] button[aria-selected="true"] { color:var(--vermillion-soft); }
         .stSlider [data-baseweb="slider"] div { color: var(--vermillion-soft); }
         .map-note { color:var(--text-faint); font-size:11px; margin-top:-4px; margin-bottom:8px; }
+        @media (max-width: 720px) {
+          .brandbar { padding:14px 12px; }
+          .brand { font-size:18px; }
+          .subtitle { font-size:28px; }
+          .header-stat { min-width:82px; }
+        }
         </style>
         """
     st.markdown(
@@ -506,7 +517,8 @@ def header(total_reports):
     st.markdown(
         f"""
         <div class="brandbar">
-          <div class="brand">P<span class="vermillion">·</span>GIS
+          <div class="brand-lockup">
+            <span class="brand">P<span class="vermillion">·</span>GIS</span>
             <span class="subtitle">재난 조기경보 지도</span>
           </div>
           <div class="header-stats">
