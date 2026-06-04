@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import pydeck as pdk
 import streamlit as st
+import streamlit.components.v1 as components
 
 try:
     from streamlit_js_eval import get_geolocation
@@ -231,12 +232,13 @@ def inject_css(theme):
         div[data-baseweb="tab-list"] button[aria-selected="true"] { color:var(--vermillion-soft); }
         .stSlider [data-baseweb="slider"] div { color: var(--vermillion-soft); }
         .map-note { color:var(--text-faint); font-size:11px; margin-top:-4px; margin-bottom:8px; }
+        .map-stage-marker { height:0; }
         .st-key-map_controls {
-          position:relative; z-index:20; width:184px;
-          margin:0 0 -108px 12px; pointer-events:none;
+          position:relative; z-index:20; width:212px;
+          margin:18px 0 -126px 12px; pointer-events:none;
         }
         .st-key-map_controls [data-testid="stHorizontalBlock"] {
-          width:150px; gap:4px; padding:4px;
+          width:198px; gap:4px; padding:4px;
           background:var(--surface-alpha); border:1px solid var(--border); border-radius:4px;
           box-shadow:0 8px 22px rgba(0,0,0,.18); pointer-events:auto;
         }
@@ -247,7 +249,7 @@ def inject_css(theme):
           font-size:24px; line-height:1; border-radius:3px;
         }
         .st-key-map_controls .stSlider {
-          width:150px; padding:4px 9px 7px; margin-top:4px;
+          width:198px; padding:4px 9px 7px; margin-top:4px;
           background:var(--surface-alpha); border:1px solid var(--border); border-radius:4px;
           box-shadow:0 8px 22px rgba(0,0,0,.14); pointer-events:auto;
         }
@@ -261,6 +263,24 @@ def inject_css(theme):
         .st-key-reset_extent,
         .st-key-locate_me {
           width:38px;
+        }
+        .map-scale {
+          position:relative; z-index:19; width:fit-content; min-width:92px;
+          margin:-78px 0 56px 14px; padding:6px 8px 7px;
+          background:var(--surface-alpha); border:1px solid var(--border); border-radius:4px;
+          box-shadow:0 8px 22px rgba(0,0,0,.14); color:var(--paper); font-size:11px; font-weight:800;
+          pointer-events:none;
+        }
+        .map-scale-bar {
+          height:7px; border-left:2px solid var(--paper); border-right:2px solid var(--paper);
+          border-bottom:2px solid var(--paper); margin-bottom:3px;
+        }
+        .map-scale-label { font-family:monospace; line-height:1; }
+        .map-fullscreen-target:fullscreen {
+          background:var(--bg); padding:12px;
+        }
+        .map-fullscreen-target:fullscreen [data-testid="stDeckGlJsonChart"] {
+          height:calc(100vh - 84px) !important;
         }
         .st-key-location_notice {
           position:relative; z-index:21; margin:6px 0 8px 12px; max-width:360px;
@@ -711,9 +731,80 @@ def reset_map_view():
     st.session_state.zoom = INITIAL_ZOOM
 
 
+def scale_bar_values(lat, zoom, max_width_px=120):
+    meters_per_pixel = 156543.03392 * math.cos(math.radians(lat)) / (2 ** zoom)
+    raw_distance = max(meters_per_pixel * max_width_px, 1)
+    exponent = math.floor(math.log10(raw_distance))
+    candidates = []
+    for exp in range(exponent - 1, exponent + 2):
+        for base in (1, 2, 5):
+            candidates.append(base * (10 ** exp))
+    distance = max([value for value in candidates if value <= raw_distance], default=1)
+    width = max(34, min(max_width_px, distance / meters_per_pixel))
+    if distance >= 1000:
+        km = distance / 1000
+        label = f"{km:g} km" if km < 10 else f"{int(km):,} km"
+    else:
+        label = f"{int(distance):,} m"
+    return width, label
+
+
+def map_scale_bar():
+    width, label = scale_bar_values(st.session_state.focus_lat, st.session_state.zoom)
+    st.markdown(
+        f"""
+        <div class="map-scale">
+          <div class="map-scale-bar" style="width:{width:.0f}px"></div>
+          <div class="map-scale-label">{label}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def fullscreen_button():
+    components.html(
+        """
+        <button id="pgis-fullscreen" title="지도 전체화면" aria-label="지도 전체화면">⛶</button>
+        <script>
+        const button = document.getElementById("pgis-fullscreen");
+        button.addEventListener("click", async () => {
+          const doc = window.parent.document;
+          const marker = doc.querySelector(".map-stage-marker");
+          const target = marker?.closest('[data-testid="column"]') || doc.querySelector('[data-testid="stDeckGlJsonChart"]')?.closest('[data-testid="column"]') || doc.documentElement;
+          target.classList.add("map-fullscreen-target");
+          try {
+            if (doc.fullscreenElement) {
+              await doc.exitFullscreen();
+            } else {
+              await target.requestFullscreen();
+            }
+          } catch (error) {
+            console.warn("Fullscreen request failed", error);
+          }
+        });
+        </script>
+        <style>
+          body { margin:0; background:transparent; }
+          #pgis-fullscreen {
+            width:38px; height:38px; min-height:38px; padding:0;
+            display:flex; align-items:center; justify-content:center;
+            border:1px solid #d4c7ad; border-radius:3px;
+            background:#f2eadb; color:#211c16;
+            font:900 22px/1 system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            cursor:pointer;
+          }
+          #pgis-fullscreen:hover { border-color:#d45a3b; color:#d45a3b; }
+        </style>
+        """,
+        height=40,
+        width=40,
+    )
+
+
 def map_navigation_controls():
     with st.container(key="map_controls"):
-        c1, c2, c3 = st.columns(3, gap="small")
+        c1, c2, c3, c4 = st.columns(4, gap="small")
         if c1.button("↻", key="reset_zoom", help="축척 초기화", use_container_width=True):
             st.session_state.zoom = INITIAL_ZOOM
             st.toast("축척이 초기값으로 돌아갔습니다.", icon="✅")
@@ -724,6 +815,8 @@ def map_navigation_controls():
             st.rerun()
         if c3.button("◎", key="locate_me", help="현재 위치 표시", use_container_width=True):
             st.session_state.locating = True
+        with c4:
+            fullscreen_button()
         zoom_value = st.slider(
             "축척 미세 조절",
             min_value=4.5,
@@ -938,8 +1031,10 @@ def main():
             """,
             unsafe_allow_html=True,
         )
+        st.markdown('<div class="map-stage-marker"></div>', unsafe_allow_html=True)
         map_navigation_controls()
         st.pydeck_chart(make_deck(filtered_reports, filtered_knowledge, filtered_hotspots), use_container_width=True, height=780)
+        map_scale_bar()
         st.markdown(
             f'<div class="map-note">선택 핀: <b>{st.session_state.picked_lat:.4f}</b>°N, <b>{st.session_state.picked_lng:.4f}</b>°E · zoom <b>{st.session_state.zoom:.1f}</b></div>',
             unsafe_allow_html=True,
