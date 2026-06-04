@@ -7,6 +7,11 @@ import pandas as pd
 import pydeck as pdk
 import streamlit as st
 
+try:
+    from streamlit_js_eval import get_geolocation
+except ImportError:
+    get_geolocation = None
+
 
 st.set_page_config(
     page_title="P·GIS 재난 조기경보 지도",
@@ -15,6 +20,11 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+
+INITIAL_LNG = 127.7
+INITIAL_LAT = 36.5
+INITIAL_ZOOM = 6.4
+CURRENT_LOCATION_ZOOM = 12.5
 
 HAZARD_META = {
     "flood": {"label": "침수/홍수", "color": "#4a6b8f", "rgb": [74, 107, 143]},
@@ -286,12 +296,13 @@ def init_state():
         "user_knowledge": [],
         "perceptions": [],
         "user_drawings": [],
-        "picked_lng": 127.7,
-        "picked_lat": 36.5,
-        "focus_lng": 127.7,
-        "focus_lat": 36.5,
-        "zoom": 6.4,
+        "picked_lng": INITIAL_LNG,
+        "picked_lat": INITIAL_LAT,
+        "focus_lng": INITIAL_LNG,
+        "focus_lat": INITIAL_LAT,
+        "zoom": INITIAL_ZOOM,
         "theme": "light",
+        "locating": False,
         "layers": {
             "reports": True,
             "knowledge": True,
@@ -657,7 +668,60 @@ def filter_reports(all_reports, hazard_filter, years_back):
     return [r for r in all_reports if r["hazard"] in hazard_filter and parse_time(r["occurred_at"]) >= cutoff]
 
 
+def reset_map_view():
+    st.session_state.focus_lng = INITIAL_LNG
+    st.session_state.focus_lat = INITIAL_LAT
+    st.session_state.picked_lng = INITIAL_LNG
+    st.session_state.picked_lat = INITIAL_LAT
+    st.session_state.zoom = INITIAL_ZOOM
+
+
+def map_navigation_controls():
+    st.markdown('<div class="section-label"><span class="section-label-num">VIEW</span><span class="section-label-text">지도 화면</span></div>', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    if c1.button("축척 초기화", use_container_width=True):
+        st.session_state.zoom = INITIAL_ZOOM
+        st.toast("축척이 초기값으로 돌아갔습니다.", icon="✓")
+        st.rerun()
+    if c2.button("남한 전체", use_container_width=True):
+        reset_map_view()
+        st.toast("초기 화면으로 돌아갔습니다.", icon="✓")
+        st.rerun()
+
+    if st.button("현재 위치 표시", use_container_width=True):
+        st.session_state.locating = True
+
+    if st.session_state.locating:
+        if get_geolocation is None:
+            st.warning("현재 위치 기능을 사용하려면 `streamlit-js-eval` 설치가 필요합니다.")
+            st.session_state.locating = False
+            return
+
+        location = get_geolocation(component_key="current_location")
+        if not location:
+            st.info("브라우저의 위치 권한을 허용하면 현재 위치로 이동합니다.")
+            return
+
+        coords = location.get("coords", {})
+        lat = coords.get("latitude")
+        lng = coords.get("longitude")
+        if lat is None or lng is None:
+            st.warning("현재 위치 좌표를 읽지 못했습니다.")
+            st.session_state.locating = False
+            return
+
+        st.session_state.picked_lng = float(lng)
+        st.session_state.picked_lat = float(lat)
+        st.session_state.focus_lng = float(lng)
+        st.session_state.focus_lat = float(lat)
+        st.session_state.zoom = CURRENT_LOCATION_ZOOM
+        st.session_state.locating = False
+        st.toast("현재 위치로 지도를 이동했습니다.", icon="✓")
+        st.rerun()
+
+
 def right_panel(all_reports):
+    map_navigation_controls()
     st.markdown('<div class="section-label"><span class="section-label-num">CONTROL</span><span class="section-label-text">지도 레이어</span></div>', unsafe_allow_html=True)
     for key, label, small in [
         ("reports", "L1 시민 제보", "Point Map"),
