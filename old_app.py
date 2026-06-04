@@ -4,10 +4,8 @@ import string
 from datetime import datetime, timedelta
 
 import pandas as pd
-import folium
+import pydeck as pdk
 import streamlit as st
-from folium.plugins import HeatMap, LocateControl
-from streamlit_folium import st_folium
 
 try:
     from streamlit_js_eval import get_geolocation
@@ -264,6 +262,18 @@ def inject_css(theme):
         .st-key-locate_me {
           width:38px;
         }
+        .map-scale {
+          position:relative; z-index:19; width:fit-content; min-width:92px;
+          margin:-78px 0 56px 14px; padding:6px 8px 7px;
+          background:var(--surface-alpha); border:1px solid var(--border); border-radius:4px;
+          box-shadow:0 8px 22px rgba(0,0,0,.14); color:var(--paper); font-size:11px; font-weight:800;
+          pointer-events:none;
+        }
+        .map-scale-bar {
+          height:7px; border-left:2px solid var(--paper); border-right:2px solid var(--paper);
+          border-bottom:2px solid var(--paper); margin-bottom:3px;
+        }
+        .map-scale-label { font-family:monospace; line-height:1; }
         .st-key-location_notice {
           position:relative; z-index:21; margin:6px 0 8px 12px; max-width:360px;
         }
@@ -420,125 +430,148 @@ def drawing_rows():
     return pd.DataFrame(rows)
 
 
-def rgba(rgb, alpha=1):
-    return f"rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, {alpha})"
-
-
-def add_popup(layer, title, rows):
-    html = f"<b>{title}</b><br>" + "<br>".join(rows)
-    folium.Popup(html, max_width=320).add_to(layer)
-
-
-def make_folium_map(filtered_reports, filtered_knowledge, filtered_hotspots):
+def make_deck(filtered_reports, filtered_knowledge, filtered_hotspots):
+    layers = []
     is_dark = st.session_state.theme == "dark"
-    tiles = "CartoDB dark_matter" if is_dark else "CartoDB positron"
-    fmap = folium.Map(
-        location=[st.session_state.focus_lat, st.session_state.focus_lng],
-        zoom_start=st.session_state.zoom,
-        tiles=tiles,
-        control_scale=True,
-        prefer_canvas=True,
-        zoom_snap=0.25,
-        zoom_delta=0.25,
+    map_style = (
+        "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+        if is_dark
+        else "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
     )
+    tooltip_bg = "#101720" if is_dark else "#fff8eb"
+    tooltip_fg = "#f4ecd8" if is_dark else "#211c16"
 
     if st.session_state.layers["heatmap"] and filtered_reports:
-        heat_data = [[r["lat"], r["lng"], r["severity"]] for r in filtered_reports]
-        HeatMap(heat_data, name="L2 위험도 히트맵", radius=28, blur=22, min_opacity=0.25, show=True).add_to(fmap)
+        layers.append(
+            pdk.Layer(
+                "HeatmapLayer",
+                report_df(filtered_reports),
+                get_position="[lng, lat]",
+                get_weight="severity",
+                radius_pixels=55,
+                opacity=0.55,
+            )
+        )
 
     if st.session_state.layers["historical"]:
-        hist_group = folium.FeatureGroup(name="L4 역사 지도", show=True)
-        for item in HISTORICAL_MAPS:
-            w, s, e, n = item["bbox"]
-            rect = folium.Rectangle(
-                bounds=[[s, w], [n, e]],
-                color="#e0b85c",
-                weight=2,
-                fill=True,
-                fill_color="#c89b3f",
-                fill_opacity=0.16,
+        hist = historical_polygons()
+        layers.append(
+            pdk.Layer(
+                "PolygonLayer",
+                hist,
+                get_polygon="polygon",
+                get_fill_color="color",
+                get_line_color="line_color",
+                line_width_min_pixels=1,
+                pickable=True,
+                stroked=True,
+                filled=True,
             )
-            rect.add_to(hist_group)
-            add_popup(rect, item["title"], [f"{item['year']} · {item['source']}", item["description"]])
-        hist_group.add_to(fmap)
+        )
 
     if st.session_state.layers["hotspots"] and filtered_hotspots:
-        hot_group = folium.FeatureGroup(name="L2 핫스팟", show=True)
-        for h in filtered_hotspots:
-            color = HAZARD_META[h["hazard"]]["color"]
-            circle = folium.Circle(
-                location=[h["lat"], h["lng"]],
-                radius=2200 + h["intensity"] * 7800,
-                color=color,
-                weight=2,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.22,
+        hot = hotspot_df(filtered_hotspots)
+        layers.append(
+            pdk.Layer(
+                "ScatterplotLayer",
+                hot,
+                get_position="[lng, lat]",
+                get_radius="radius",
+                get_fill_color="fill",
+                get_line_color="ring",
+                line_width_min_pixels=2,
+                pickable=True,
+                stroked=True,
+                filled=True,
             )
-            circle.add_to(hot_group)
-            add_popup(circle, h["name"], [HAZARD_META[h["hazard"]]["label"], f"{h['method']} · intensity {h['intensity']:.2f}"])
-        hot_group.add_to(fmap)
+        )
 
-    if st.session_state.layers["userDrawings"]:
-        draw_group = folium.FeatureGroup(name="L3 사용자 그림", show=True)
-        for drawing in st.session_state.user_drawings:
-            coords = drawing["coords"]
-            latlngs = [[lat, lng] for lng, lat in coords]
-            if drawing["kind"] == "polygon" and len(latlngs) >= 3:
-                folium.Polygon(latlngs, color="#e87456", weight=2, fill=True, fill_color="#c8472a", fill_opacity=0.18, tooltip=drawing["label"]).add_to(draw_group)
-            elif drawing["kind"] == "line" and len(latlngs) >= 2:
-                folium.PolyLine(latlngs, color="#e87456", weight=4, opacity=0.9, tooltip=drawing["label"]).add_to(draw_group)
-        draw_group.add_to(fmap)
+    drawings = drawing_rows()
+    if st.session_state.layers["userDrawings"] and not drawings.empty:
+        polygons = drawings[drawings["kind"] == "polygon"]
+        lines = drawings[drawings["kind"] == "line"]
+        if not polygons.empty:
+            layers.append(
+                pdk.Layer(
+                    "PolygonLayer",
+                    polygons,
+                    get_polygon="polygon",
+                    get_fill_color="color",
+                    get_line_color=[232, 116, 86, 230],
+                    line_width_min_pixels=2,
+                    pickable=True,
+                    stroked=True,
+                    filled=True,
+                )
+            )
+        if not lines.empty:
+            layers.append(
+                pdk.Layer(
+                    "PathLayer",
+                    lines,
+                    get_path="path",
+                    get_color="color",
+                    width_min_pixels=3,
+                    pickable=True,
+                )
+            )
 
     if st.session_state.layers["knowledge"] and filtered_knowledge:
-        knowledge_group = folium.FeatureGroup(name="L1 전통지식", show=True)
-        palette = {
-            "animal": "#7d8f5c",
-            "plant": "#5a6b3d",
-            "weather": "#4a6b8f",
-            "celestial": "#e0b85c",
-            "place_memory": "#c89b3f",
-        }
-        for k in filtered_knowledge:
-            marker = folium.CircleMarker(
-                location=[k["lat"], k["lng"]],
-                radius=8,
-                color="#f4ecd8",
-                weight=1,
-                fill=True,
-                fill_color=palette.get(k["category"], "#c89b3f"),
-                fill_opacity=0.9,
+        layers.append(
+            pdk.Layer(
+                "ScatterplotLayer",
+                knowledge_df(filtered_knowledge),
+                get_position="[lng, lat]",
+                get_radius="radius",
+                get_fill_color="color",
+                get_line_color=[244, 236, 216, 220],
+                line_width_min_pixels=1,
+                pickable=True,
+                stroked=True,
+                filled=True,
             )
-            marker.add_to(knowledge_group)
-            add_popup(marker, k["indicator"], [KNOWLEDGE_CATEGORY[k["category"]], k.get("description") or "상세 설명 없음"])
-        knowledge_group.add_to(fmap)
+        )
 
     if st.session_state.layers["reports"] and filtered_reports:
-        report_group = folium.FeatureGroup(name="L1 시민 제보", show=True)
-        for r in filtered_reports:
-            color = HAZARD_META[r["hazard"]]["color"]
-            marker = folium.CircleMarker(
-                location=[r["lat"], r["lng"]],
-                radius=5 + r["severity"] * 2,
-                color="#f4ecd8",
-                weight=1,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.86,
+        layers.append(
+            pdk.Layer(
+                "ScatterplotLayer",
+                report_df(filtered_reports),
+                get_position="[lng, lat]",
+                get_radius="radius",
+                get_fill_color="color",
+                get_line_color=[244, 236, 216, 220],
+                line_width_min_pixels=1,
+                pickable=True,
+                stroked=True,
+                filled=True,
             )
-            marker.add_to(report_group)
-            add_popup(marker, r["place"], [HAZARD_META[r["hazard"]]["label"], f"심각도 {r['severity']}/5", r["narrative"]])
-        report_group.add_to(fmap)
+        )
 
-    folium.Marker(
-        [st.session_state.picked_lat, st.session_state.picked_lng],
-        tooltip="선택 핀",
-        icon=folium.Icon(color="red", icon="map-pin", prefix="fa"),
-    ).add_to(fmap)
+    layers.append(
+        pdk.Layer(
+            "ScatterplotLayer",
+            pd.DataFrame([{"lng": st.session_state.picked_lng, "lat": st.session_state.picked_lat, "color": [244, 236, 216, 245]}]),
+            get_position="[lng, lat]",
+            get_radius=6000,
+            get_fill_color="color",
+            get_line_color=[232, 116, 86, 255],
+            line_width_min_pixels=2,
+            stroked=True,
+        )
+    )
 
-    LocateControl(position="topleft", strings={"title": "현재 위치"}).add_to(fmap)
-    folium.LayerControl(position="topright", collapsed=True).add_to(fmap)
-    return fmap
+    return pdk.Deck(
+        map_style=map_style,
+        initial_view_state=pdk.ViewState(
+            latitude=st.session_state.focus_lat,
+            longitude=st.session_state.focus_lng,
+            zoom=st.session_state.zoom,
+            pitch=0,
+        ),
+        layers=layers,
+        tooltip={"html": "<b>{tooltip}</b>", "style": {"backgroundColor": tooltip_bg, "color": tooltip_fg}},
+    )
 
 
 def header(total_reports):
@@ -688,6 +721,37 @@ def reset_map_view():
     st.session_state.picked_lng = INITIAL_LNG
     st.session_state.picked_lat = INITIAL_LAT
     st.session_state.zoom = INITIAL_ZOOM
+
+
+def scale_bar_values(lat, zoom, max_width_px=120):
+    meters_per_pixel = 156543.03392 * math.cos(math.radians(lat)) / (2 ** zoom)
+    raw_distance = max(meters_per_pixel * max_width_px, 1)
+    exponent = math.floor(math.log10(raw_distance))
+    candidates = []
+    for exp in range(exponent - 1, exponent + 2):
+        for base in (1, 2, 5):
+            candidates.append(base * (10 ** exp))
+    distance = max([value for value in candidates if value <= raw_distance], default=1)
+    width = max(34, min(max_width_px, distance / meters_per_pixel))
+    if distance >= 1000:
+        km = distance / 1000
+        label = f"{km:g} km" if km < 10 else f"{int(km):,} km"
+    else:
+        label = f"{int(distance):,} m"
+    return width, label
+
+
+def map_scale_bar():
+    width, label = scale_bar_values(st.session_state.focus_lat, st.session_state.zoom)
+    st.markdown(
+        f"""
+        <div class="map-scale">
+          <div class="map-scale-bar" style="width:{width:.0f}px"></div>
+          <div class="map-scale-label">{label}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def map_navigation_controls():
@@ -918,20 +982,8 @@ def main():
             unsafe_allow_html=True,
         )
         map_navigation_controls()
-        map_state = st_folium(
-            make_folium_map(filtered_reports, filtered_knowledge, filtered_hotspots),
-            key="main_map",
-            height=780,
-            use_container_width=True,
-        )
-        if map_state:
-            center_state = map_state.get("center")
-            zoom_state = map_state.get("zoom")
-            if center_state:
-                st.session_state.focus_lat = center_state.get("lat", st.session_state.focus_lat)
-                st.session_state.focus_lng = center_state.get("lng", st.session_state.focus_lng)
-            if zoom_state is not None:
-                st.session_state.zoom = float(zoom_state)
+        st.pydeck_chart(make_deck(filtered_reports, filtered_knowledge, filtered_hotspots), use_container_width=True, height=780)
+        map_scale_bar()
         st.markdown(
             f'<div class="map-note">선택 핀: <b>{st.session_state.picked_lat:.4f}</b>°N, <b>{st.session_state.picked_lng:.4f}</b>°E · zoom <b>{st.session_state.zoom:.1f}</b></div>',
             unsafe_allow_html=True,
