@@ -564,7 +564,7 @@ def coordinate_picker():
         st.session_state.focus_lng = st.session_state.picked_lng
         st.session_state.focus_lat = st.session_state.picked_lat
         st.session_state.zoom = 12
-        st.toast("위치가 지정되었습니다.", icon="✓")
+        st.toast("위치가 지정되었습니다.", icon="✅")
 
 
 def collection_panel():
@@ -608,7 +608,7 @@ def collection_panel():
                             "source": "citizen",
                         },
                     )
-                    st.toast("재해 제보가 등록되었습니다.", icon="✓")
+                    st.toast("재해 제보가 등록되었습니다.", icon="✅")
                     st.rerun()
 
         with tab_perception:
@@ -630,7 +630,7 @@ def collection_panel():
                         "created_at": datetime.now().isoformat(),
                     },
                 )
-                st.toast(f"위험인식 {score}/7 점이 등록되었습니다.", icon="✓")
+                st.toast(f"위험인식 {score}/7 점이 등록되었습니다.", icon="✅")
 
         with tab_knowledge:
             with st.form("knowledge_form"):
@@ -656,7 +656,7 @@ def collection_panel():
                             "elder": elder.strip() or None,
                         },
                     )
-                    st.toast("전통지식이 등록되었습니다. FPIC 검토 후 공개됩니다.", icon="✓")
+                    st.toast("전통지식이 등록되었습니다. FPIC 검토 후 공개됩니다.", icon="✅")
                     st.rerun()
 
         st.markdown('<div class="section-label"><span class="section-label-num">FOOTNOTE</span><span class="section-label-text">데이터 윤리</span></div>', unsafe_allow_html=True)
@@ -681,11 +681,11 @@ def map_navigation_controls():
     c1, c2 = st.columns(2)
     if c1.button("축척 초기화", use_container_width=True):
         st.session_state.zoom = INITIAL_ZOOM
-        st.toast("축척이 초기값으로 돌아갔습니다.", icon="✓")
+        st.toast("축척이 초기값으로 돌아갔습니다.", icon="✅")
         st.rerun()
     if c2.button("남한 전체", use_container_width=True):
         reset_map_view()
-        st.toast("초기 화면으로 돌아갔습니다.", icon="✓")
+        st.toast("초기 화면으로 돌아갔습니다.", icon="✅")
         st.rerun()
 
     if st.button("현재 위치 표시", use_container_width=True):
@@ -716,7 +716,7 @@ def map_navigation_controls():
         st.session_state.focus_lat = float(lat)
         st.session_state.zoom = CURRENT_LOCATION_ZOOM
         st.session_state.locating = False
-        st.toast("현재 위치로 지도를 이동했습니다.", icon="✓")
+        st.toast("현재 위치로 지도를 이동했습니다.", icon="✅")
         st.rerun()
 
 
@@ -835,7 +835,7 @@ def drawing_panel():
                 kind = "polygon" if mode == "폴리곤" else "line"
                 label = "위험구역" if mode == "폴리곤" else ("범람경로" if mode == "라인" else "자유 스케치")
                 st.session_state.user_drawings.append({"kind": kind, "coords": coords, "label": label})
-                st.toast(f"{label}이 저장되었습니다.", icon="✓")
+                st.toast(f"{label}이 저장되었습니다.", icon="✅")
                 st.rerun()
 
 
