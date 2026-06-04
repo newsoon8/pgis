@@ -231,11 +231,30 @@ def inject_css(theme):
         div[data-baseweb="tab-list"] button[aria-selected="true"] { color:var(--vermillion-soft); }
         .stSlider [data-baseweb="slider"] div { color: var(--vermillion-soft); }
         .map-note { color:var(--text-faint); font-size:11px; margin-top:-4px; margin-bottom:8px; }
+        .st-key-map_controls {
+          position:relative; z-index:20; display:flex; justify-content:flex-end;
+          margin:0 12px -52px 0; pointer-events:none;
+        }
+        .st-key-map_controls [data-testid="stHorizontalBlock"] {
+          width:132px; margin-left:auto; gap:4px; padding:4px;
+          background:var(--surface-alpha); border:1px solid var(--border); border-radius:4px;
+          box-shadow:0 8px 22px rgba(0,0,0,.18); pointer-events:auto;
+        }
+        .st-key-map_controls [data-testid="column"] { padding:0 !important; }
+        .st-key-map_controls .stButton > button {
+          width:38px; height:38px; min-height:38px; padding:0;
+          display:flex; align-items:center; justify-content:center;
+          font-size:19px; line-height:1; border-radius:3px;
+        }
+        .st-key-location_notice {
+          position:relative; z-index:21; margin:-4px 12px 8px auto; max-width:360px;
+        }
         @media (max-width: 720px) {
           .brandbar { padding:14px 12px; }
           .brand { font-size:18px; }
           .subtitle { font-size:28px; }
           .header-stat { min-width:82px; }
+          .st-key-map_controls { margin-right:8px; }
         }
         </style>
         """
@@ -677,37 +696,39 @@ def reset_map_view():
 
 
 def map_navigation_controls():
-    st.markdown('<div class="section-label"><span class="section-label-num">VIEW</span><span class="section-label-text">지도 화면</span></div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    if c1.button("축척 초기화", use_container_width=True):
-        st.session_state.zoom = INITIAL_ZOOM
-        st.toast("축척이 초기값으로 돌아갔습니다.", icon="✅")
-        st.rerun()
-    if c2.button("남한 전체", use_container_width=True):
-        reset_map_view()
-        st.toast("초기 화면으로 돌아갔습니다.", icon="✅")
-        st.rerun()
-
-    if st.button("현재 위치 표시", use_container_width=True):
-        st.session_state.locating = True
+    with st.container(key="map_controls"):
+        c1, c2, c3 = st.columns(3, gap="small")
+        if c1.button("↻", key="reset_zoom", help="축척 초기화", use_container_width=True):
+            st.session_state.zoom = INITIAL_ZOOM
+            st.toast("축척이 초기값으로 돌아갔습니다.", icon="✅")
+            st.rerun()
+        if c2.button("韓", key="reset_extent", help="남한 전체", use_container_width=True):
+            reset_map_view()
+            st.toast("초기 화면으로 돌아갔습니다.", icon="✅")
+            st.rerun()
+        if c3.button("◎", key="locate_me", help="현재 위치 표시", use_container_width=True):
+            st.session_state.locating = True
 
     if st.session_state.locating:
         if get_geolocation is None:
-            st.warning("현재 위치 기능을 사용하려면 `streamlit-js-eval` 설치가 필요합니다.")
-            st.session_state.locating = False
+            with st.container(key="location_notice"):
+                st.warning("현재 위치 기능을 사용하려면 `streamlit-js-eval` 설치가 필요합니다.")
+                st.session_state.locating = False
             return
 
         location = get_geolocation(component_key="current_location")
         if not location:
-            st.info("브라우저의 위치 권한을 허용하면 현재 위치로 이동합니다.")
+            with st.container(key="location_notice"):
+                st.info("브라우저의 위치 권한을 허용하면 현재 위치로 이동합니다.")
             return
 
         coords = location.get("coords", {})
         lat = coords.get("latitude")
         lng = coords.get("longitude")
         if lat is None or lng is None:
-            st.warning("현재 위치 좌표를 읽지 못했습니다.")
-            st.session_state.locating = False
+            with st.container(key="location_notice"):
+                st.warning("현재 위치 좌표를 읽지 못했습니다.")
+                st.session_state.locating = False
             return
 
         st.session_state.picked_lng = float(lng)
@@ -721,7 +742,6 @@ def map_navigation_controls():
 
 
 def right_panel(all_reports):
-    map_navigation_controls()
     st.markdown('<div class="section-label"><span class="section-label-num">CONTROL</span><span class="section-label-text">지도 레이어</span></div>', unsafe_allow_html=True)
     for key, label, small in [
         ("reports", "L1 시민 제보", "Point Map"),
@@ -890,6 +910,7 @@ def main():
             """,
             unsafe_allow_html=True,
         )
+        map_navigation_controls()
         st.pydeck_chart(make_deck(filtered_reports, filtered_knowledge, filtered_hotspots), use_container_width=True, height=780)
         st.markdown(
             f'<div class="map-note">선택 핀: <b>{st.session_state.picked_lat:.4f}</b>°N, <b>{st.session_state.picked_lng:.4f}</b>°E · zoom <b>{st.session_state.zoom:.1f}</b></div>',
