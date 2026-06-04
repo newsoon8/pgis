@@ -232,11 +232,11 @@ def inject_css(theme):
         .stSlider [data-baseweb="slider"] div { color: var(--vermillion-soft); }
         .map-note { color:var(--text-faint); font-size:11px; margin-top:-4px; margin-bottom:8px; }
         .st-key-map_controls {
-          position:relative; z-index:20; display:flex; justify-content:flex-end;
-          margin:0 12px -52px 0; pointer-events:none;
+          position:relative; z-index:20; width:184px;
+          margin:0 0 -108px 12px; pointer-events:none;
         }
         .st-key-map_controls [data-testid="stHorizontalBlock"] {
-          width:132px; margin-left:auto; gap:4px; padding:4px;
+          width:150px; gap:4px; padding:4px;
           background:var(--surface-alpha); border:1px solid var(--border); border-radius:4px;
           box-shadow:0 8px 22px rgba(0,0,0,.18); pointer-events:auto;
         }
@@ -244,17 +244,33 @@ def inject_css(theme):
         .st-key-map_controls .stButton > button {
           width:38px; height:38px; min-height:38px; padding:0;
           display:flex; align-items:center; justify-content:center;
-          font-size:19px; line-height:1; border-radius:3px;
+          font-size:24px; line-height:1; border-radius:3px;
+        }
+        .st-key-map_controls .stSlider {
+          width:150px; padding:4px 9px 7px; margin-top:4px;
+          background:var(--surface-alpha); border:1px solid var(--border); border-radius:4px;
+          box-shadow:0 8px 22px rgba(0,0,0,.14); pointer-events:auto;
+        }
+        .st-key-map_controls .stSlider label { display:none; }
+        .st-key-map_controls .stSlider [data-baseweb="slider"] { padding-top:0; padding-bottom:0; }
+        .st-key-map_controls .stSlider [data-testid="stTickBar"] { display:none; }
+        .st-key-reset_extent button { font-size:21px !important; }
+        .st-key-locate_me button { font-size:26px !important; }
+        .st-key-reset_zoom button { font-size:25px !important; }
+        .st-key-reset_zoom,
+        .st-key-reset_extent,
+        .st-key-locate_me {
+          width:38px;
         }
         .st-key-location_notice {
-          position:relative; z-index:21; margin:-4px 12px 8px auto; max-width:360px;
+          position:relative; z-index:21; margin:6px 0 8px 12px; max-width:360px;
         }
         @media (max-width: 720px) {
           .brandbar { padding:14px 12px; }
           .brand { font-size:18px; }
           .subtitle { font-size:28px; }
           .header-stat { min-width:82px; }
-          .st-key-map_controls { margin-right:8px; }
+          .st-key-map_controls { margin-left:8px; }
         }
         </style>
         """
@@ -708,6 +724,18 @@ def map_navigation_controls():
             st.rerun()
         if c3.button("◎", key="locate_me", help="현재 위치 표시", use_container_width=True):
             st.session_state.locating = True
+        zoom_value = st.slider(
+            "축척 미세 조절",
+            min_value=4.5,
+            max_value=13.5,
+            value=float(st.session_state.zoom),
+            step=0.1,
+            format="%.1f",
+            label_visibility="collapsed",
+        )
+        if abs(zoom_value - float(st.session_state.zoom)) >= 0.05:
+            st.session_state.zoom = zoom_value
+            st.rerun()
 
     if st.session_state.locating:
         if get_geolocation is None:
