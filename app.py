@@ -235,7 +235,7 @@ def inject_css(theme):
         .map-note { color:var(--text-faint); font-size:11px; margin-top:-4px; margin-bottom:8px; }
         .st-key-map_controls {
           position:relative; z-index:20; width:184px;
-          margin:18px 0 -126px 12px; pointer-events:none;
+          margin:18px 0 -126px 5.5rem; pointer-events:none;
         }
         .st-key-map_controls [data-testid="stHorizontalBlock"] {
           width:150px; gap:4px; padding:4px;
@@ -272,7 +272,7 @@ def inject_css(theme):
           .brand { font-size:18px; }
           .subtitle { font-size:28px; }
           .header-stat { min-width:82px; }
-          .st-key-map_controls { margin-left:8px; }
+          .st-key-map_controls { margin-left:4.5rem; }
         }
         </style>
         """
