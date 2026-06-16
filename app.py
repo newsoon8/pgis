@@ -429,18 +429,41 @@ def add_popup(layer, title, rows):
     folium.Popup(html, max_width=320).add_to(layer)
 
 
+def add_base_layers(fmap, is_dark):
+    folium.TileLayer(
+        "CartoDB positron",
+        name="기본지도",
+        control=True,
+        show=not is_dark,
+    ).add_to(fmap)
+    folium.TileLayer(
+        "CartoDB dark_matter",
+        name="다크지도",
+        control=True,
+        show=is_dark,
+    ).add_to(fmap)
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attr="Tiles &copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+        name="위성영상 (Esri)",
+        overlay=False,
+        control=True,
+        show=False,
+    ).add_to(fmap)
+
+
 def make_folium_map(filtered_reports, filtered_knowledge, filtered_hotspots):
     is_dark = st.session_state.theme == "dark"
-    tiles = "CartoDB dark_matter" if is_dark else "CartoDB positron"
     fmap = folium.Map(
         location=[st.session_state.focus_lat, st.session_state.focus_lng],
         zoom_start=st.session_state.zoom,
-        tiles=tiles,
+        tiles=None,
         control_scale=True,
         prefer_canvas=True,
         zoom_snap=0.25,
         zoom_delta=0.25,
     )
+    add_base_layers(fmap, is_dark)
 
     if st.session_state.layers["heatmap"] and filtered_reports:
         heat_data = [[r["lat"], r["lng"], r["severity"]] for r in filtered_reports]
