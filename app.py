@@ -450,6 +450,15 @@ def add_base_layers(fmap, is_dark):
         control=True,
         show=False,
     ).add_to(fmap)
+    folium.TileLayer(
+        tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png",
+        attr="&copy; OpenStreetMap contributors &copy; CARTO",
+        name="OSM 라벨/도로",
+        overlay=True,
+        control=True,
+        show=False,
+        subdomains="abcd",
+    ).add_to(fmap)
 
 
 def make_folium_map(filtered_reports, filtered_knowledge, filtered_hotspots):
