@@ -1,4 +1,5 @@
 import math
+import os
 import random
 import string
 from datetime import datetime, timedelta
@@ -27,6 +28,7 @@ INITIAL_LNG = 127.7
 INITIAL_LAT = 36.5
 INITIAL_ZOOM = 6.4
 CURRENT_LOCATION_ZOOM = 12.5
+DEFAULT_VWORLD_API_KEY = "8F2D2B49-08A4-38AA-A9D2-9149C1C19ECD"
 
 HAZARD_META = {
     "flood": {"label": "침수/홍수", "color": "#4a6b8f", "rgb": [74, 107, 143]},
@@ -429,7 +431,17 @@ def add_popup(layer, title, rows):
     folium.Popup(html, max_width=320).add_to(layer)
 
 
+def get_vworld_api_key():
+    try:
+        secret_key = st.secrets.get("VWORLD_API_KEY")
+    except Exception:
+        secret_key = None
+    return secret_key or os.getenv("VWORLD_API_KEY") or DEFAULT_VWORLD_API_KEY
+
+
 def add_base_layers(fmap, is_dark):
+    vworld_api_key = get_vworld_api_key()
+
     folium.TileLayer(
         "CartoDB positron",
         name="기본지도",
@@ -459,6 +471,23 @@ def add_base_layers(fmap, is_dark):
         show=False,
         subdomains="abcd",
     ).add_to(fmap)
+    if vworld_api_key:
+        folium.TileLayer(
+            tiles=f"https://api.vworld.kr/req/wmts/1.0.0/{vworld_api_key}/Satellite/{{z}}/{{y}}/{{x}}.jpeg",
+            attr="VWorld",
+            name="VWorld 영상지도",
+            overlay=False,
+            control=True,
+            show=False,
+        ).add_to(fmap)
+        folium.TileLayer(
+            tiles=f"https://api.vworld.kr/req/wmts/1.0.0/{vworld_api_key}/Hybrid/{{z}}/{{y}}/{{x}}.png",
+            attr="VWorld",
+            name="VWorld 하이브리드 라벨",
+            overlay=True,
+            control=True,
+            show=False,
+        ).add_to(fmap)
 
 
 def make_folium_map(filtered_reports, filtered_knowledge, filtered_hotspots):
