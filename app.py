@@ -941,20 +941,13 @@ def main():
             unsafe_allow_html=True,
         )
         map_navigation_controls()
-        map_state = st_folium(
+        st_folium(
             make_folium_map(filtered_reports, filtered_knowledge, filtered_hotspots),
             key="main_map",
             height=780,
             use_container_width=True,
+            returned_objects=[],
         )
-        if map_state:
-            center_state = map_state.get("center")
-            zoom_state = map_state.get("zoom")
-            if center_state:
-                st.session_state.focus_lat = center_state.get("lat", st.session_state.focus_lat)
-                st.session_state.focus_lng = center_state.get("lng", st.session_state.focus_lng)
-            if zoom_state is not None:
-                st.session_state.zoom = float(zoom_state)
         st.markdown(
             f'<div class="map-note">선택 핀: <b>{st.session_state.picked_lat:.4f}</b>°N, <b>{st.session_state.picked_lng:.4f}</b>°E · zoom <b>{st.session_state.zoom:.1f}</b></div>',
             unsafe_allow_html=True,
