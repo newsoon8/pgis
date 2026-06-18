@@ -453,6 +453,12 @@ def add_terrain_layers(fmap):
     terrain_url = get_terrain_tile_url()
     terrain_layers = [
         {
+            "path": "elevation",
+            "name": "DEM 고도",
+            "opacity": 0.56,
+            "attr": "SRTM DEM elevation tiles",
+        },
+        {
             "path": "hillshade",
             "name": "DEM 음영기복",
             "opacity": 0.55,
@@ -494,8 +500,13 @@ def add_terrain_layers(fmap):
 def add_terrain_legend(fmap):
     legend_html = """
     <div class="terrain-legend">
-      <details open>
+      <details>
         <summary>DEM 범례</summary>
+        <div class="terrain-legend-section">
+          <div class="terrain-legend-title">고도</div>
+          <div class="terrain-gradient elevation"></div>
+          <div class="terrain-scale"><span>0m</span><span>100</span><span>300</span><span>700</span><span>1200</span><span>2000m+</span></div>
+        </div>
         <div class="terrain-legend-section">
           <div class="terrain-legend-title">음영기복</div>
           <div class="terrain-gradient hillshade"></div>
@@ -539,6 +550,8 @@ def add_terrain_legend(fmap):
         cursor: pointer;
         font-weight: 800;
         letter-spacing: .02em;
+      }
+      .terrain-legend details[open] summary {
         margin-bottom: 6px;
       }
       .terrain-legend-section {
@@ -552,6 +565,9 @@ def add_terrain_legend(fmap):
         height: 11px;
         border-radius: 999px;
         border: 1px solid rgba(36, 31, 24, .18);
+      }
+      .terrain-gradient.elevation {
+        background: linear-gradient(90deg, #387c58, #68a45c, #b4be70, #c29a68, #917467, #eeeee8);
       }
       .terrain-gradient.hillshade {
         background: linear-gradient(90deg, #111111, #777777, #f5f5f5);

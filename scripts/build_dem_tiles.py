@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Build XYZ PNG map tiles from DEM derivative GeoTIFF folders.
+Build XYZ PNG map tiles from DEM/DEM derivative GeoTIFF folders.
 
 Input directory layout:
   dem_derivatives/
@@ -9,8 +9,12 @@ Input directory layout:
     slope/*.tif
     twi/*.tif
 
+  or raw DEM tiles:
+    srtm/*.tif
+
 Output directory layout:
   terrain_tiles/
+    elevation/{z}/{x}/{y}.png
     hillshade/{z}/{x}/{y}.png
     slope/{z}/{x}/{y}.png
     aspect/{z}/{x}/{y}.png
@@ -49,7 +53,7 @@ WEB_MERCATOR = "EPSG:3857"
 WGS84 = "EPSG:4326"
 ORIGIN_SHIFT = 20037508.342789244
 TILE_SIZE = 256
-SUPPORTED_LAYERS = ("hillshade", "slope", "aspect", "twi")
+SUPPORTED_LAYERS = ("elevation", "hillshade", "slope", "aspect", "twi")
 
 
 @dataclass
@@ -180,7 +184,21 @@ def colorize(layer: str, data: Any, valid: Any) -> Any:
     if not np.any(valid):
         return rgba
 
-    if layer == "hillshade":
+    if layer == "elevation":
+        values = np.clip(np.where(valid, data, 0), 0, 2000)
+        rgba[..., :3] = interpolate_ramp(
+            values,
+            [
+                (0, (56, 124, 88)),
+                (100, (104, 164, 92)),
+                (300, (180, 190, 112)),
+                (700, (194, 154, 104)),
+                (1200, (145, 116, 103)),
+                (2000, (238, 238, 232)),
+            ],
+        )
+        rgba[..., 3][valid] = 190
+    elif layer == "hillshade":
         values = np.clip(np.where(valid, data, 0), 0, 255).astype("uint8")
         rgba[..., 0] = values
         rgba[..., 1] = values
@@ -249,7 +267,10 @@ def build_layer_tiles(
     overwrite: bool,
     keep_empty: bool,
 ) -> None:
-    sources = open_sources(input_dir / layer)
+    layer_dir = input_dir / layer
+    if layer == "elevation" and not layer_dir.exists():
+        layer_dir = input_dir
+    sources = open_sources(layer_dir)
     if not sources:
         print(f"[skip] {layer}: no GeoTIFF files found")
         return
