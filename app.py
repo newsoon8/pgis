@@ -491,6 +491,94 @@ def add_terrain_layers(fmap):
         ).add_to(fmap)
 
 
+def add_terrain_legend(fmap):
+    legend_html = """
+    <div class="terrain-legend">
+      <details open>
+        <summary>DEM 범례</summary>
+        <div class="terrain-legend-section">
+          <div class="terrain-legend-title">음영기복</div>
+          <div class="terrain-gradient hillshade"></div>
+          <div class="terrain-scale"><span>그림자</span><span>밝음</span></div>
+        </div>
+        <div class="terrain-legend-section">
+          <div class="terrain-legend-title">경사도</div>
+          <div class="terrain-gradient slope"></div>
+          <div class="terrain-scale"><span>0°</span><span>10°</span><span>20°</span><span>35°</span><span>45°+</span></div>
+        </div>
+        <div class="terrain-legend-section">
+          <div class="terrain-legend-title">사면방향</div>
+          <div class="terrain-gradient aspect"></div>
+          <div class="terrain-scale"><span>북</span><span>동</span><span>남</span><span>서</span><span>북</span></div>
+        </div>
+        <div class="terrain-legend-section">
+          <div class="terrain-legend-title">지형수문지수 TWI</div>
+          <div class="terrain-gradient twi"></div>
+          <div class="terrain-scale"><span>4</span><span>8</span><span>11</span><span>14</span><span>18+</span></div>
+        </div>
+      </details>
+    </div>
+    <style>
+      .terrain-legend {
+        position: fixed;
+        right: 14px;
+        bottom: 28px;
+        z-index: 9999;
+        width: 238px;
+        padding: 10px 12px;
+        border: 1px solid rgba(54, 48, 38, .22);
+        border-radius: 7px;
+        background: rgba(255, 250, 240, .92);
+        box-shadow: 0 10px 28px rgba(36, 30, 22, .16);
+        color: #241f18;
+        font-family: "Noto Sans KR", "Apple SD Gothic Neo", Arial, sans-serif;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .terrain-legend summary {
+        cursor: pointer;
+        font-weight: 800;
+        letter-spacing: .02em;
+        margin-bottom: 6px;
+      }
+      .terrain-legend-section {
+        margin-top: 8px;
+      }
+      .terrain-legend-title {
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .terrain-gradient {
+        height: 11px;
+        border-radius: 999px;
+        border: 1px solid rgba(36, 31, 24, .18);
+      }
+      .terrain-gradient.hillshade {
+        background: linear-gradient(90deg, #111111, #777777, #f5f5f5);
+      }
+      .terrain-gradient.slope {
+        background: linear-gradient(90deg, #2d915f, #86be58, #f6d25c, #e76f51, #a83746);
+      }
+      .terrain-gradient.aspect {
+        background: linear-gradient(90deg, #f24d4d, #d7e85a, #59d179, #55c7df, #6b77e8, #e36ad5, #f24d4d);
+      }
+      .terrain-gradient.twi {
+        background: linear-gradient(90deg, #5c54a4, #2b83ba, #66c2a5, #e6f598, #fe9929);
+      }
+      .terrain-scale {
+        display: flex;
+        justify-content: space-between;
+        gap: 4px;
+        margin-top: 3px;
+        color: rgba(36, 31, 24, .72);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+    </style>
+    """
+    fmap.get_root().html.add_child(folium.Element(legend_html))
+
+
 def add_base_layers(fmap, is_dark):
     vworld_api_key = get_vworld_api_key()
 
@@ -651,6 +739,7 @@ def make_folium_map(filtered_reports, filtered_knowledge, filtered_hotspots):
     ).add_to(fmap)
 
     LocateControl(position="topleft", strings={"title": "현재 위치"}).add_to(fmap)
+    add_terrain_legend(fmap)
     folium.LayerControl(position="topright", collapsed=True).add_to(fmap)
     return fmap
 
