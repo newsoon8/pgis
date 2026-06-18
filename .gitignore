@@ -1,0 +1,7 @@
+srtm/
+dem_derivatives/
+terrain_tiles/
+terrain_tiles_test/
+__pycache__/
+*.aux.xml
+.DS_Store

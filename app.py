@@ -29,6 +29,7 @@ INITIAL_LAT = 36.5
 INITIAL_ZOOM = 6.4
 CURRENT_LOCATION_ZOOM = 12.5
 DEFAULT_VWORLD_API_KEY = "8F2D2B49-08A4-38AA-A9D2-9149C1C19ECD"
+DEFAULT_TERRAIN_TILE_URL = "https://pub-9acef4ab7ea147b092c8af9146ec74f5.r2.dev/terrain_tiles"
 
 HAZARD_META = {
     "flood": {"label": "침수/홍수", "color": "#4a6b8f", "rgb": [74, 107, 143]},
@@ -439,6 +440,57 @@ def get_vworld_api_key():
     return secret_key or os.getenv("VWORLD_API_KEY") or DEFAULT_VWORLD_API_KEY
 
 
+def get_terrain_tile_url():
+    try:
+        secret_url = st.secrets.get("TERRAIN_TILE_URL")
+    except Exception:
+        secret_url = None
+    url = secret_url or os.getenv("TERRAIN_TILE_URL") or DEFAULT_TERRAIN_TILE_URL
+    return url.rstrip("/")
+
+
+def add_terrain_layers(fmap):
+    terrain_url = get_terrain_tile_url()
+    terrain_layers = [
+        {
+            "path": "hillshade",
+            "name": "DEM 음영기복",
+            "opacity": 0.55,
+            "attr": "SRTM DEM hillshade tiles",
+        },
+        {
+            "path": "slope",
+            "name": "DEM 경사도",
+            "opacity": 0.62,
+            "attr": "SRTM DEM slope tiles",
+        },
+        {
+            "path": "aspect",
+            "name": "DEM 사면방향",
+            "opacity": 0.58,
+            "attr": "SRTM DEM aspect tiles",
+        },
+        {
+            "path": "twi",
+            "name": "DEM 지형수문지수",
+            "opacity": 0.6,
+            "attr": "SRTM DEM TWI tiles",
+        },
+    ]
+    for layer in terrain_layers:
+        folium.TileLayer(
+            tiles=f"{terrain_url}/{layer['path']}/{{z}}/{{x}}/{{y}}.png",
+            attr=layer["attr"],
+            name=layer["name"],
+            overlay=True,
+            control=True,
+            show=False,
+            opacity=layer["opacity"],
+            min_zoom=6,
+            max_native_zoom=10,
+        ).add_to(fmap)
+
+
 def add_base_layers(fmap, is_dark):
     vworld_api_key = get_vworld_api_key()
 
@@ -488,6 +540,7 @@ def add_base_layers(fmap, is_dark):
             control=True,
             show=False,
         ).add_to(fmap)
+    add_terrain_layers(fmap)
 
 
 def make_folium_map(filtered_reports, filtered_knowledge, filtered_hotspots):
